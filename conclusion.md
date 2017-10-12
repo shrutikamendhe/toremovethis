@@ -5,7 +5,6 @@ In this experience, you explored the configuration of **Notification Service** u
 Now you know how to
 
 - Create **Cosmos DB**.
-
 - Create collections/insert data in Cosmos DB using **Data Migration Tool**.
 - Create **Azure Functions** to retrieve data of ground staff serving the Flying Solo service.
 - Create code to change the availability of staff serving the Flying Solo Service.
