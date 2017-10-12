@@ -32,3 +32,5 @@ Using **ContosoAir app** you will come across **Azure Notification APIs** , **Te
 - Playing with **ContosoAir Application** to book tickets and get timely notifications.
 
 **Ready? Let&#39;s get started!**
+
+> ### Ready? Let&#39;s get started!
