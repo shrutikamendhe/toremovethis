@@ -1,0 +1,36 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "administratorLogin": {
+            "value": "c2cadmin"
+        },
+        "administratorLoginPassword": {
+            "value": null
+        },
+        "serverName": {
+            "value": "c2cadmin"
+        },
+        "location": {
+            "value": "southcentralus"
+        },
+        "skuName": {
+            "value": "PGSQLS100"
+        },
+        "skuTier": {
+            "value": "Standard"
+        },
+        "skuCapacityDTU": {
+            "value": 100
+        },
+        "skuFamily": {
+            "value": "SkuFamily"
+        },
+        "skuSizeMB": {
+            "value": 128000
+        },
+        "version": {
+            "value": "9.6"
+        }
+    }
+}
