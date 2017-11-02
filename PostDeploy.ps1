@@ -1,28 +1,4 @@
 <# Custom Script for Windows #>
-
-## Extracting Payloads
-$temploc = "D:\Temp"
-If (!(Test-Path $TempLoc)) {
-    New-Item $temploc -type directory
-}
-
-$contentpayload = $config.public.contentPayloadFileName
-$contentloc = "C:\source"
-
-If (!(Test-Path $contentloc)) {
-    New-Item $contentloc -type directory
-}
-
-write-output "Unzip Content Files"
-$shell = new-object -com shell.application
-$zip = $shell.NameSpace("$temploc\$contentpayload")
-foreach($item in $zip.items())
-{
-    $shell.Namespace("$contentloc").copyhere($item,0x14)
-}
-
-#####
-
 $Computername = $env:COMPUTERNAME
 $Username = $config.public.vmLocalUserName          
 $PlainPassword = $config.private.vmLocalUserPassword 
@@ -65,6 +41,25 @@ if(!(Test-Path $registryPath)) {
   New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
 }  
 
+<#Unzip Payload Files - 0x14 Unzips silent and overwrites existing files#>
+$temploc = "D:\Temp"
+If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
+
+$contentpayload = $config.public.contentPayloadFileName
+$contentloc = "C:\source"
+
+If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
+
+write-output "Unzip Content Files"
+$shell = new-object -com shell.application
+$zip = $shell.NameSpace("$temploc\$contentpayload")
+#foreach($item in $zip.items())
+#{
+#    $shell.Namespace("$contentloc").copyhere($item,0x14)
+#}
+
+#####
+
 #Cleanup 
 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR) 
 Remove-Variable Password,BSTR,_password
@@ -84,6 +79,10 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' -Nam
 #WindowsUpdates Download
 #New-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name NoAutoUpdate -value 1 -Force
 #New-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name AUOptions -value 2 -Force
+
+#Adding cmdlets to stop and disable Windows Update service
+Stop-Service wuauserv
+Set-Service wuauserv -StartupType Disabled
 
 #Load default registry hive
 & reg load HKLM\DEFAULT C:\Users\Default\NTUSER.DAT
