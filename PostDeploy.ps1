@@ -72,10 +72,3 @@ New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Policies\Microsoft\Internet Explo
 
 #Disable Balloon Notifications
 New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name EnableBalloonTips -Value 0 -PropertyType DWORD -Force
-
-#Unload default registry hive
- & reg unload HKLM\DEFAULT
-
-#Reboot
-#write-output "Restart Server"
-#& shutdown /r /t 30 /f
