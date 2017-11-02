@@ -77,5 +77,5 @@ New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Microsoft\Windows\CurrentVersion\
  & reg unload HKLM\DEFAULT
 
 #Reboot
-write-output "Restart Server"
-& shutdown /r /t 30 /f
+#write-output "Restart Server"
+#& shutdown /r /t 30 /f
