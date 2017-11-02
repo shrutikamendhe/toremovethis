@@ -1,4 +1,28 @@
 <# Custom Script for Windows #>
+
+## Extracting Payloads
+$temploc = "D:\Temp"
+If (!(Test-Path $TempLoc)) {
+    New-Item $temploc -type directory
+}
+
+$contentpayload = $config.public.contentPayloadFileName
+$contentloc = "C:\source"
+
+If (!(Test-Path $contentloc)) {
+    New-Item $contentloc -type directory
+}
+
+write-output "Unzip Content Files"
+$shell = new-object -com shell.application
+$zip = $shell.NameSpace("$temploc\$contentpayload")
+foreach($item in $zip.items())
+{
+    $shell.Namespace("$contentloc").copyhere($item,0x14)
+}
+
+#####
+
 $Computername = $env:COMPUTERNAME
 $Username = $config.public.vmLocalUserName          
 $PlainPassword = $config.private.vmLocalUserPassword 
