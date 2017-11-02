@@ -238,16 +238,6 @@ function Invoke-CustomScript {
     $config.public.otherFileUris | ? {-not [string]::IsNullOrEmpty($_)} | % {Get-FileFromUri -TempLoc $tempLoc -FileUri $_} | Out-Null
     $scriptFile = Get-FileFromUri -TempLoc $tempLoc -FileUri $config.public.scriptFileUri
 
-    if ($config.public.storageSentinelName) {
-        $blobStorageConfig = @{ 
-            PrimaryStorageAccountName = $config.private.storageAccountName;
-            PrimaryStorageAccountKey = $config.private.storageAccountKey;
-            ScriptSentinelFileName = $config.public.storageSentinelName;
-        }
-
-        $blobStorageConfig | ConvertTo-Json | Out-File -Encoding utf8 (Join-Path $tempLoc 'blob_storage_config.json');
-    }
-
     if ($config.public.installGuide) {
         Install-GuideApp -StorageAccountName $config.private.storageAccountName -StorageAccountKey $config.private.storageAccountKey
     }
