@@ -19,11 +19,11 @@ $_password = [system.runtime.interopservices.marshal]::PtrToStringAuto($BSTR)
 $NewUser.SetPassword(($_password))
 $NewUser.SetInfo()
 
-#Add user to Local Administrators Group
-$AdminGroup = [ADSI]"WinNT://$Computername/Administrators,group"
+#Add user to Local Remote Desktop Users Group
+$RemoteDesktopUsersGroup = [ADSI]"WinNT://$Computername/Remote Desktop Users,group"
 $User = [ADSI]"WinNT://$Computername/$Username,user"
-if (!($AdminGroup.Members() | ? {$_.Name() -eq $Username})) {
-  $AdminGroup.Add($User.Path)
+if (!($RemoteDesktopUsersGroup.Members() | ? {$_.Name() -eq $Username})) {
+  $RemoteDesktopUsersGroup.Add($User.Path)
 }
 
 #Set account to never expire
@@ -42,21 +42,30 @@ if(!(Test-Path $registryPath)) {
 }  
 
 <#Unzip Payload Files - 0x14 Unzips silent and overwrites existing files#>
-$temploc = "D:\Temp"
-If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
-
-$contentpayload = $config.public.contentPayloadFileName
-$contentloc = "C:\source"
-
-If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
-
-write-output "Unzip Content Files"
-$shell = new-object -com shell.application
-$zip = $shell.NameSpace("$temploc\$contentpayload")
-#foreach($item in $zip.items())
-#{
-#    $shell.Namespace("$contentloc").copyhere($item,0x14)
-#}
+Try{
+  $temploc = "D:\Temp"
+  If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
+  
+  $contentpayload = $config.public.contentPayloadFileName
+  write-output "Unzip Content Files"
+  $contentloc = "C:\source"
+  
+  If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
+  
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  write-output "Unzip Content Files"
+  function Unzip
+  {
+      param([string]$zipfile, [string]$outpath)
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+  }
+  
+  Unzip $contentpayload "$contentloc\contosoair"
+}
+Catch{
+    $ErrorMessage = $_.Exception.Message
+    write-output $ErrorMessage
+}
 
 #####
 
@@ -96,9 +105,9 @@ New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Policies\Microsoft\Internet Explo
 #Disable Balloon Notifications
 New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name EnableBalloonTips -Value 0 -PropertyType DWORD -Force
 
-#Unload default registry hive		
-& reg unload HKLM\DEFAULT		
-		
-#Reboot		
-write-output "Restart Server"		
+#Unload default registry hive  
+& reg unload HKLM\DEFAULT  
+  
+#Reboot  
+write-output "Restart Server"  
 & shutdown /r /t 30 /f
