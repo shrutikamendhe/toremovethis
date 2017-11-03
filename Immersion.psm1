@@ -148,7 +148,13 @@ function Install-GuideApp {
     Add-Type -AssemblyName 'System.IO.Compression.FileSystem'
 
     $guide_directory = "$env:SystemDrive\Guide"
-    If (!(Test-Path $guide_directory)) {New-Item $guide_directory -Type Directory}
+    if (!(Test-Path $guide_directory)) {
+        New-Item $guide_directory -Type Directory
+    }
+    else {
+        "Guide app already installed. Skipping" | Out-Host
+        return;
+    }
 
     $guide_source_uri = "https://immteststorage.blob.core.windows.net/deployment/Guide.zip?sv=2015-04-05&sr=b&sig=CQSKDsrMO1dnNGmUt8eI3lok1dLNfAtsi57IUQJiZWQ%3D&spr=https&st=2016-07-05T04%3A35%3A08Z&se=2018-07-05T04%3A35%3A08Z&sp=r"
     $guide_package = "$env:SystemDrive\Guide\Guide.zip"
@@ -167,7 +173,7 @@ function Install-GuideApp {
     $startup_config | ConvertTo-Json | Out-File -Encoding UTF8 "$guide_directory\app.startup.json"
 
     # Create desktop shortcut/autolaunch shortcuts
-    $shortcut_name = "Immersion Hands-on Lab.lnk"
+    $shortcut_name = "Microsoft Hands-on Labs.lnk"
 
     # Public/Desktop
     $shell = New-Object -ComObject ("WScript.Shell")
@@ -175,7 +181,7 @@ function Install-GuideApp {
     $shortcut.TargetPath = "$guide_directory\ImmersionGuide.exe"
     $shortcut.WorkingDirectory = $guide_directory;
     $shortcut.IconLocation = "$guide_directory\ImmersionGuide.exe, 0";
-    $shortcut.Description = 'Launch the Immersion Hands-on Lab Guide';
+    $shortcut.Description = 'Launch the Microsoft Hands-on Labs Guide';
     $shortcut.Save()
 
     # Public/Start Menu/Programs/Startup
@@ -183,8 +189,10 @@ function Install-GuideApp {
     $shortcut.TargetPath = "$guide_directory\ImmersionGuide.exe"
     $shortcut.WorkingDirectory = $guide_directory;
     $shortcut.IconLocation = "$guide_directory\ImmersionGuide.exe, 0";
-    $shortcut.Description = 'Launch the Immersion Hands-on Lab Guide';
+    $shortcut.Description = 'Launch the Microsoft Hands-on Labs Guide';
     $shortcut.Save()
+    
+    'Guide app installed' | Out-Host
 }
 
 function Get-CustomScriptConfig {
@@ -217,34 +225,113 @@ function Get-FileFromUri {
 
     $uri = New-Object System.Uri $FileUri
     $file = Join-Path $TempLoc ($uri.Segments[$uri.Segments.Length - 1])
+    "Downloading '$file' from '$uri'" | Out-Host
 
-    $wc = New-Object System.Net.WebClient
-    $wc.DownloadFile($FileUri, $file)
+    for ($i = 0; $i -lt 30; $i++) {
+        try {
+            $wc = New-Object System.Net.WebClient
+            $wc.DownloadFile($FileUri, $file)
+            break
+        } catch {
+            Write-Warning "Download failed: $($_.Exception)"
+            if ($i -eq 29) {
+                throw
+            }
+
+            sleep -Seconds 15
+            & ipconfig /flushdns | Out-Null
+        }
+    }
 
     $file
 }
 
-function Invoke-CustomScript {
-    $testFile = "$env:SystemDrive\immersion"
-    if (Test-Path $testFile) {
-        return;
+function HashToSHA256($textToHash)
+{
+    $hasher = new-object System.Security.Cryptography.SHA256Managed
+    $toHash = [System.Text.Encoding]::UTF8.GetBytes($textToHash)
+    $hashByteArray = $hasher.ComputeHash($toHash)
+    foreach($byte in $hashByteArray)
+    {
+         $res += $byte.ToString('X2')
     }
+    return $res;
+}
 
-    $config = Get-CustomScriptConfig    
-
+function Invoke-CustomScript {
     $tempLoc = 'D:\Temp'
     if (!(Test-Path $tempLoc)) {New-Item $tempLoc -Type Directory}
 
-    $config.public.otherFileUris | ? {-not [string]::IsNullOrEmpty($_)} | % {Get-FileFromUri -TempLoc $tempLoc -FileUri $_} | Out-Null
-    $scriptFile = Get-FileFromUri -TempLoc $tempLoc -FileUri $config.public.scriptFileUri
+    try {
+        Start-Transcript -Path "$TempLoc\InvokeCustomScript_$(Get-Date -Format "yyyyMMdd_hhmmsstt").log"
 
-    if ($config.public.installGuide) {
-        Install-GuideApp -StorageAccountName $config.private.storageAccountName -StorageAccountKey $config.private.storageAccountKey
+        "Retrieving Custom Script Config" | Out-Host
+        $config = Get-CustomScriptConfig
+
+        $scriptFileUri = $config.public.scriptFileUri
+        "Found script file '$scriptFileUri' to execute" | Out-Host
+
+        "Script file to hash $scriptFileUri" | Out-Host
+        $scriptFileUriHash = HashToSHA256 -textToHash $scriptFileUri
+
+        $testFile = Join-Path $env:SystemDrive $scriptFileUriHash
+        "Lock file name $testFile" | Out-Host
+        if (Test-Path $testFile) {
+            'Lock file detected, skipping execution' | Out-Host
+            return;
+        }
+
+        $config.public.otherFileUris | ? {-not [string]::IsNullOrEmpty($_)} | % {Get-FileFromUri -TempLoc $tempLoc -FileUri $_} | Out-Null
+        $scriptFile = Get-FileFromUri -TempLoc $tempLoc -FileUri $scriptFileUri
+
+        if ($config.public.storageSentinelName) {
+            $blobStorageConfig = @{ 
+                PrimaryStorageAccountName = $config.private.storageAccountName;
+                PrimaryStorageAccountKey = $config.private.storageAccountKey;
+                ScriptSentinelFileName = $config.public.storageSentinelName;
+            }
+
+            $blobStorageConfig | ConvertTo-Json | Out-File -Encoding utf8 (Join-Path $tempLoc 'blob_storage_config.json');
+            'Sentinel file configuration stored' | Out-Host
+        }
+
+        if ($config.public.installGuide) {
+            Install-GuideApp -StorageAccountName $config.private.storageAccountName -StorageAccountKey $config.private.storageAccountKey
+        }
+
+        New-Item $testFile -Type File
+
+        "Starting script $scriptFile" | Out-Host
+
+        & $scriptFile
+
+        'Script complete' | Out-Host
     }
-
-    New-Item $testFile -Type File
-
-    & $scriptFile
+    catch {
+        Write-Warning "An error occurred: $($_.Exception)"
+        # Warning captured by transcript, which is uploaded to Blob Storage in Finally block
+        throw
+    }
+    finally {
+        Stop-Transcript
+        # Upload all *.log files to blob storage
+        $log_files = Get-ChildItem -Path $tempLoc -Filter "*.log" -Recurse
+        foreach ($log in $log_files) {
+            try {
+                # Trim the directory name from the start of the path
+                $log_path = $log.DirectoryName.SubString($tempLoc.Length);
+                $blob_name = "assets/logs/$log_path/$($log.Name)" -replace '(\\|/)+','/' # fix backslashes and duplicate slashes
+                "Uploading $($log.FullName) to blob storage as $blob_name" | Out-Host
+                Write-AzureBlobFile -StorageAccountName $config.private.storageAccountName `
+                                    -StorageAccountKey $config.private.storageAccountKey `
+                                    -BlobPath $blob_name `
+                                    -SourceFile $log.FullName
+            }
+            catch {
+                Write-Warning "Failed upload: $_"
+            }
+        }
+    }
 }
 
 Export-ModuleMember -Function Write-AzureBlobFile,Read-AzureBlobFile,Get-CustomScriptConfig,Invoke-CustomScript
