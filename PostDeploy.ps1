@@ -4,11 +4,35 @@ $Username = $config.public.vmLocalUserName
 $PlainPassword = $config.private.vmLocalUserPassword 
 $Password = ConvertTo-SecureString $PlainPassword -AsPlainText -Force
 
+
+try {
+    # Assign roles to the lab user
+    function AssignUserRole ($RoleDefinitionName) {
+        Write-Verbose "Assigning role '$RoleDefinitionName' to $UserEmail"
+        if (!(Get-AzureRmRoleAssignment -SignInName $UserEmail -resourceGroupName $resourceGroupName -RoleDefinitionName $RoleDefinitionName)) {
+            New-AzureRmRoleAssignment -SignInName $UserEmail -resourceGroupName $resourceGroupName -RoleDefinitionName $RoleDefinitionName | Out-Null
+        }
+        else {
+            Write-Warning "Role '$RoleDefinitionName' already assigned!"
+        }
+    }
+
+
+    #Assign roles required for the current story
+    AssignUserRole -RoleDefinitionName 'DocumentDB Account Contributor'
+    AssignUserRole -RoleDefinitionName 'Website Contributor'
+    AssignUserRole -RoleDefinitionName 'Web Plan Contributor'
+}
+Catch {
+    $ErrorMessage = $_.Exception.Message
+    write-output $ErrorMessage
+}
+
 #Create User
 $ADSIComp = [adsi]"WinNT://$Computername"
 $NewUser = $ADSIComp.Children | ? {$_.SchemaClassName -eq 'User' -and $_.Name -eq $Username};
 if (!$NewUser) {
-  $NewUser = $ADSIComp.Create('User',$Username)
+    $NewUser = $ADSIComp.Create('User', $Username)
 }
 
 #Create password
@@ -23,7 +47,7 @@ $NewUser.SetInfo()
 $RemoteDesktopUsersGroup = [ADSI]"WinNT://$Computername/Remote Desktop Users,group"
 $User = [ADSI]"WinNT://$Computername/$Username,user"
 if (!($RemoteDesktopUsersGroup.Members() | ? {$_.Name() -eq $Username})) {
-  $RemoteDesktopUsersGroup.Add($User.Path)
+    $RemoteDesktopUsersGroup.Add($User.Path)
 }
 
 #Set account to never expire
@@ -34,35 +58,35 @@ $User.CommitChanges()
 $registryPath = "HKLM:\Software\Policies\Microsoft\Windows\System"
 $Name = "DisableLogonBackgroundImage"
 $value = "1"
-if(!(Test-Path $registryPath)) {
-  New-Item -Path $registryPath -Force | Out-Null
-  New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
-} else {
-  New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
+if (!(Test-Path $registryPath)) {
+    New-Item -Path $registryPath -Force | Out-Null
+    New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
+}
+else {
+    New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
 }  
 
 <#Unzip Payload Files - 0x14 Unzips silent and overwrites existing files#>
-Try{
-  $temploc = "D:\Temp"
-  If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
+Try {
+    $temploc = "D:\Temp"
+    If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
   
-  $contentpayload = $config.public.contentPayloadFileName
-  write-output "Unzip Content Files"
-  $contentloc = "C:\source"
+    $contentpayload = $config.public.contentPayloadFileName
+    write-output "Unzip Content Files"
+    $contentloc = "C:\source"
   
-  If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
+    If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
   
-  Add-Type -AssemblyName System.IO.Compression.FileSystem
-  write-output "Unzip Content Files"
-  function Unzip
-  {
-      param([string]$zipfile, [string]$outpath)
-      [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
-  }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    write-output "Unzip Content Files"
+    function Unzip {
+        param([string]$zipfile, [string]$outpath)
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+    }
   
-  Unzip $contentpayload "$contentloc\contosoair"
+    Unzip $contentpayload "$contentloc\contosoair"
 }
-Catch{
+Catch {
     $ErrorMessage = $_.Exception.Message
     write-output $ErrorMessage
 }
@@ -71,7 +95,7 @@ Catch{
 
 #Cleanup 
 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR) 
-Remove-Variable Password,BSTR,_password
+Remove-Variable Password, BSTR, _password
 
 #Set AutoadminLogin and Run Once
 New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name AutoAdminLogon -Value 1 -Force
