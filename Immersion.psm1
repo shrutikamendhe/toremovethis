@@ -174,7 +174,7 @@ function Install-GuideApp {
     $shortcut = $shell.CreateShortcut((join-path "C:\Users\Public\Desktop\" $shortcut_name))
     $shortcut.TargetPath = "$guide_directory\ImmersionGuide.exe"
     $shortcut.WorkingDirectory = $guide_directory;
-    $shortcut.IconLocation = 'ImmersionGuide.exe, 0';
+    $shortcut.IconLocation = "$guide_directory\ImmersionGuide.exe, 0";
     $shortcut.Description = 'Launch the Immersion Hands-on Lab Guide';
     $shortcut.Save()
 
@@ -182,7 +182,7 @@ function Install-GuideApp {
     $shortcut = $shell.CreateShortcut((join-path "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" $shortcut_name))
     $shortcut.TargetPath = "$guide_directory\ImmersionGuide.exe"
     $shortcut.WorkingDirectory = $guide_directory;
-    $shortcut.IconLocation = 'ImmersionGuide.exe, 0';
+    $shortcut.IconLocation = "$guide_directory\ImmersionGuide.exe, 0";
     $shortcut.Description = 'Launch the Immersion Hands-on Lab Guide';
     $shortcut.Save()
 }
