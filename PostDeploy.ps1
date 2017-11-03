@@ -42,23 +42,31 @@ if(!(Test-Path $registryPath)) {
 }  
 
 <#Unzip Payload Files - 0x14 Unzips silent and overwrites existing files#>
-$temploc = "D:\Temp"
-If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
-
-$contentpayload = $config.public.contentPayloadFileName
-$contentloc = "C:\source"
-
-If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
-
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-write-output "Unzip Content Files"
-function Unzip
-{
-    param([string]$zipfile, [string]$outpath)
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+Try{
+  $temploc = "D:\Temp"
+  If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
+  
+  $contentpayload = $config.public.contentPayloadFileName
+  write-output "Unzip Content Files"
+  $contentloc = "C:\source"
+  
+  If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
+  
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  write-output "Unzip Content Files"
+  function Unzip
+  {
+      param([string]$zipfile, [string]$outpath)
+      [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+  }
+  
+  Unzip $contentpayload "$contentloc\contosoair"
+}
+Catch{
+    $ErrorMessage = $_.Exception.Message
+    write-output $ErrorMessage
 }
 
-Unzip $contentpayload "$contentloc\contosoair"
 
 #####
 
