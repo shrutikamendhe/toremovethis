@@ -4,30 +4,6 @@ $Username = $config.public.vmLocalUserName
 $PlainPassword = $config.private.vmLocalUserPassword 
 $Password = ConvertTo-SecureString $PlainPassword -AsPlainText -Force
 
-
-try {
-    # Assign roles to the lab user
-    function AssignUserRole ($RoleDefinitionName) {
-        Write-Verbose "Assigning role '$RoleDefinitionName' to $UserEmail"
-        if (!(Get-AzureRmRoleAssignment -SignInName $UserEmail -resourceGroupName $resourceGroupName -RoleDefinitionName $RoleDefinitionName)) {
-            New-AzureRmRoleAssignment -SignInName $UserEmail -resourceGroupName $resourceGroupName -RoleDefinitionName $RoleDefinitionName | Out-Null
-        }
-        else {
-            Write-Warning "Role '$RoleDefinitionName' already assigned!"
-        }
-    }
-
-
-    #Assign roles required for the current story
-    AssignUserRole -RoleDefinitionName 'DocumentDB Account Contributor'
-    AssignUserRole -RoleDefinitionName 'Website Contributor'
-    AssignUserRole -RoleDefinitionName 'Web Plan Contributor'
-}
-Catch {
-    $ErrorMessage = $_.Exception.Message
-    write-output $ErrorMessage
-}
-
 #Create User
 $ADSIComp = [adsi]"WinNT://$Computername"
 $NewUser = $ADSIComp.Children | ? {$_.SchemaClassName -eq 'User' -and $_.Name -eq $Username};
@@ -71,7 +47,7 @@ Try {
     $temploc = "D:\Temp"
     If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
   
-    $contentpayload = $config.public.contentPayloadFileName
+    $contentpayload = "contosoair.zip"
     write-output "Unzip Content Files"
     $contentloc = "C:\source"
   
@@ -84,7 +60,7 @@ Try {
         [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
     }
   
-    Unzip $contentpayload "$contentloc\contosoair"
+    Unzip "$temploc\$contentpayload" "$contentloc\contosoair"
 }
 Catch {
     $ErrorMessage = $_.Exception.Message
@@ -128,6 +104,8 @@ New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Policies\Microsoft\Internet Explo
 
 #Disable Balloon Notifications
 New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name EnableBalloonTips -Value 0 -PropertyType DWORD -Force
+
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";%appdata%\npm", [EnvironmentVariableTarget]::Machine)
 
 #Unload default registry hive  
 & reg unload HKLM\DEFAULT  
