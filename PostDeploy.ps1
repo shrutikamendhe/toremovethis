@@ -105,7 +105,7 @@ New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Policies\Microsoft\Internet Explo
 #Disable Balloon Notifications
 New-ItemProperty -Path 'HKLM:\DEFAULT\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name EnableBalloonTips -Value 0 -PropertyType DWORD -Force
 
-[Environment]::SetEnvironmentVariable("Path", $env:Path + ";%appdata%\npm", [EnvironmentVariableTarget]::Machine)
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";%AppData%\npm\", [EnvironmentVariableTarget]::Machine)
 
 #Unload default registry hive  
 & reg unload HKLM\DEFAULT  
