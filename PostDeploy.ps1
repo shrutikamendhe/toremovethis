@@ -42,33 +42,6 @@ else {
     New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType DWORD -Force | Out-Null
 }  
 
-<#Unzip Payload Files - 0x14 Unzips silent and overwrites existing files#>
-Try {
-    $temploc = "D:\Temp"
-    If (!(Test-Path $TempLoc)) {New-Item $temploc -type directory}
-  
-    $contentpayload = "contosoair.zip"
-    write-output "Unzip Content Files"
-    $contentloc = "C:\source"
-  
-    If (!(Test-Path $contentloc)) {New-Item $contentloc -type directory}
-  
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    write-output "Unzip Content Files"
-    function Unzip {
-        param([string]$zipfile, [string]$outpath)
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
-    }
-  
-    Unzip "$temploc\$contentpayload" "$contentloc\contosoair"
-}
-Catch {
-    $ErrorMessage = $_.Exception.Message
-    write-output $ErrorMessage
-}
-
-#####
-
 #Cleanup 
 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR) 
 Remove-Variable Password, BSTR, _password
